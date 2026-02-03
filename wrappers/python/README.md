@@ -40,6 +40,17 @@ if len(barcodes) == 0:
 	print("Could not find any barcode.")
 ```
 
+If you need better accuracy on difficult 1D codes, enable the more exhaustive scan modes:
+
+```python
+barcodes = zxingcpp.read_barcodes(
+    img,
+    formats=zxingcpp.BarcodeFormat.Code39,
+    try_harder=True,
+    try_invert=True,
+)
+```
+
 ### Writing barcodes
 
 ```python

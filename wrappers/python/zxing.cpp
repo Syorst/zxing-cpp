@@ -39,13 +39,16 @@ static void deprecation_warning(std::string_view msg)
 	warnings.attr("warn")(msg, builtins.attr("DeprecationWarning"));
 }
 
-auto read_barcodes_impl(py::object _image, const BarcodeFormats& formats, bool try_rotate, bool try_downscale, TextMode text_mode,
-						Binarizer binarizer, bool is_pure, EanAddOnSymbol ean_add_on_symbol, bool return_errors,
+auto read_barcodes_impl(py::object _image, const BarcodeFormats& formats, bool try_harder, bool try_rotate, bool try_invert,
+						bool try_downscale, TextMode text_mode, Binarizer binarizer, bool is_pure,
+						EanAddOnSymbol ean_add_on_symbol, bool return_errors,
 						uint8_t max_number_of_symbols = 0xff)
 {
 	const auto opts = ReaderOptions()
+		.tryHarder(try_harder)
 		.formats(formats)
 		.tryRotate(try_rotate)
+		.tryInvert(try_invert)
 		.tryDownscale(try_downscale)
 		.textMode(text_mode)
 		.binarizer(binarizer)
@@ -177,20 +180,21 @@ auto read_barcodes_impl(py::object _image, const BarcodeFormats& formats, bool t
 	return ReadBarcodes({bytes, width, height, imgfmt, rowStride, pixStride}, opts);
 }
 
-std::optional<Barcode> read_barcode(py::object _image, const BarcodeFormats& formats, bool try_rotate, bool try_downscale,
-									TextMode text_mode, Binarizer binarizer, bool is_pure, EanAddOnSymbol ean_add_on_symbol,
-									bool return_errors)
+std::optional<Barcode> read_barcode(py::object _image, const BarcodeFormats& formats, bool try_harder, bool try_rotate,
+									bool try_invert, bool try_downscale, TextMode text_mode, Binarizer binarizer,
+									bool is_pure, EanAddOnSymbol ean_add_on_symbol, bool return_errors)
 {
-	auto res = read_barcodes_impl(_image, formats, try_rotate, try_downscale, text_mode, binarizer, is_pure, ean_add_on_symbol,
-								  return_errors, 1);
+	auto res = read_barcodes_impl(_image, formats, try_harder, try_rotate, try_invert, try_downscale, text_mode, binarizer,
+								  is_pure, ean_add_on_symbol, return_errors, 1);
 	return res.empty() ? std::nullopt : std::optional(res.front());
 }
 
-Barcodes read_barcodes(py::object _image, const BarcodeFormats& formats, bool try_rotate, bool try_downscale, TextMode text_mode,
-					   Binarizer binarizer, bool is_pure, EanAddOnSymbol ean_add_on_symbol, bool return_errors)
+Barcodes read_barcodes(py::object _image, const BarcodeFormats& formats, bool try_harder, bool try_rotate, bool try_invert,
+					   bool try_downscale, TextMode text_mode, Binarizer binarizer, bool is_pure,
+					   EanAddOnSymbol ean_add_on_symbol, bool return_errors)
 {
-	return read_barcodes_impl(_image, formats, try_rotate, try_downscale, text_mode, binarizer, is_pure, ean_add_on_symbol,
-							  return_errors);
+	return read_barcodes_impl(_image, formats, try_harder, try_rotate, try_invert, try_downscale, text_mode, binarizer, is_pure,
+							  ean_add_on_symbol, return_errors);
 }
 
 auto image_view(py::buffer buffer, int width, int height, ImageFormat format, int rowStride, int pixStride)
@@ -464,7 +468,9 @@ PYBIND11_MODULE(zxingcpp, m)
 	m.def("read_barcode", &read_barcode,
 		py::arg("image"),
 		py::arg("formats") = BarcodeFormats{},
+		py::arg("try_harder") = false,
 		py::arg("try_rotate") = true,
+		py::arg("try_invert") = false,
 		py::arg("try_downscale") = true,
 		py::arg("text_mode") = TextMode::HRI,
 		py::arg("binarizer") = Binarizer::LocalAverage,
@@ -481,9 +487,13 @@ PYBIND11_MODULE(zxingcpp, m)
 		"  - a zxingcpp.ImageView object, which is effectively a memory view but with custom strides and ImageFormat\n"
 		":type formats: zxing.BarcodeFormat|zxing.BarcodeFormats\n"
 		":param formats: the format(s) to decode. If ``None``, decode all formats.\n"
+		":type try_harder: bool\n"
+		":param try_harder: if ``True``, spend more time to increase accuracy (slower).\n"
 		":type try_rotate: bool\n"
 		":param try_rotate: if ``True`` (the default), decoder searches for barcodes in any direction; \n"
 		"  if ``False``, it will not search for 90° / 270° rotated barcodes.\n"
+		":type try_invert: bool\n"
+		":param try_invert: if ``True``, also try inverted (light-on-dark) barcodes.\n"
 		":type try_downscale: bool\n"
 		":param try_downscale: if ``True`` (the default), decoder also scans downscaled versions of the input; \n"
 		"  if ``False``, it will only search in the resolution provided.\n"
@@ -508,7 +518,9 @@ PYBIND11_MODULE(zxingcpp, m)
 	m.def("read_barcodes", &read_barcodes,
 		py::arg("image"),
 		py::arg("formats") = BarcodeFormats{},
+		py::arg("try_harder") = false,
 		py::arg("try_rotate") = true,
+		py::arg("try_invert") = false,
 		py::arg("try_downscale") = true,
 		py::arg("text_mode") = TextMode::HRI,
 		py::arg("binarizer") = Binarizer::LocalAverage,
@@ -525,9 +537,13 @@ PYBIND11_MODULE(zxingcpp, m)
 		"  - a zxingcpp.ImageView object, which is effectively a memory view but with custom strides and ImageFormat\n"
 		":type formats: zxing.BarcodeFormat|zxing.BarcodeFormats\n"
 		":param formats: the format(s) to decode. If ``None``, decode all formats.\n"
+		":type try_harder: bool\n"
+		":param try_harder: if ``True``, spend more time to increase accuracy (slower).\n"
 		":type try_rotate: bool\n"
 		":param try_rotate: if ``True`` (the default), decoder searches for barcodes in any direction; \n"
 		"  if ``False``, it will not search for 90° / 270° rotated barcodes.\n"
+		":type try_invert: bool\n"
+		":param try_invert: if ``True``, also try inverted (light-on-dark) barcodes.\n"
 		":type try_downscale: bool\n"
 		":param try_downscale: if ``True`` (the default), decoder also scans downscaled versions of the input; \n"
 		"  if ``False``, it will only search in the resolution provided.\n"
